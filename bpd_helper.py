@@ -49,6 +49,28 @@ class EBehaviorVariableLinkType(Enum):
 
 @dataclass
 class BpdVariable:
+    """
+    An object to represent an entry in the VariableData array.
+
+    By default commands will not be made for these as setting the VariableData array crashes,
+    instead specific variables will have commands written for them if needs_command is True.
+    Variables do not need to be set up to match their actual values in the bpd since they are
+    only there for referencing when linking, you only need to properly set the properties
+    when a command is to be written.
+    By default the idx will be -1, once it is generated it will be automatically appended to
+    the array of variables and given it's correct index.
+    Specifying an index will override the specified index with the new variable, if the index
+    is outisde the variables array, it will be extended with BpdVariable objects
+
+    Attributes:
+        var_type: the type of the variable
+        name: the name of the variable
+        idx: index in the VariableData array
+        needs_command: if a command should be written to set this variable
+                        'set {bpd_name} BehaviorSequences[{sequence}].VariableData[{idx}] {command_str}
+        command_str: string used to generate variable commands
+    """
+
     var_type: EBehaviorVariableType = EBehaviorVariableType.BVAR_MAX
     name: str = ""
     idx: int = -1
@@ -62,12 +84,32 @@ class BpdVariable:
             _ALL_VARIABLES.append(self)
             return
         if len(_ALL_VARIABLES) < (self.idx + 1):
-            _ALL_VARIABLES.extend([None for _ in range(self.idx + 1 - len(_ALL_VARIABLES))])
+            _ALL_VARIABLES.extend(
+                [BpdVariable() for _ in range(self.idx + 1 - len(_ALL_VARIABLES))]
+            )
         _ALL_VARIABLES[self.idx] = self
 
 
 @dataclass
 class VariableLinkData:
+    """
+    An object to represent an entry in the ConsolidatedVariableLinkData array.
+
+    Specifies how variables are used by behaviors and events,
+    events will only use BVARLINK_Output, while behaviors use any of the types.
+    For BVARLINK_Output you need to specify the connection_index as it is used
+    to specify which output variable is sent.
+    For BVARLINK_Input the name is used to specify what property of the behavior
+    the variable will be used for.
+    For BVARLINK_Context the name should be just 'Context'.
+
+    Attributes:
+        vars: list of variable indexes to link to
+        name: the PropertyName
+        connection_index: the ConnectionIndex
+        command_str: string used to generate variable commands
+    """
+
     vars: List[int]
     name: str
     link_type: EBehaviorVariableLinkType
@@ -80,6 +122,20 @@ class VariableLinkData:
 
 @dataclass
 class EventData:
+    """
+    An object to represent an entry in the EventData2 array.
+
+    Attributes:
+        event_name: the EventName property
+        enabled: the bEnabled property
+        replicate: the bReplicate property
+        max_trigger_count: the MaxTriggerCount property
+        retrigger_delay: the ReTriggerDelay property
+        filter_object: the FilterObject property
+        output_variables: list of VariableLinkData for the OutputVariables
+        output_links: list of BehaviorLink for the OutputLinks
+    """
+
     event_name: str
     enabled: bool = True
     replicate: bool = False
