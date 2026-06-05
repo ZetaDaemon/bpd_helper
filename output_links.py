@@ -1,3 +1,13 @@
+# ruff: noqa: N801, D101
+# Naming matches the UE objects and functions so those warnings can be ignored.
+"""Various behavior output links as enums.
+
+Allows for writing more readable behaviors so you dont
+have to have magic numbers for the output links.
+
+This is not nessasarily an extensive collection as it is written by hand.
+"""
+
 from enum import IntEnum
 
 
@@ -66,3 +76,9 @@ class Behavior_FireShot(IntEnum):
 class Behavior_SpawnProjectile(IntEnum):
     SpawnedAllProjectiles = 0
     SpawnedProjectile = 1
+
+
+class Behavior_OpinionSwitch(IntEnum):
+    Enemy = 0
+    Neutral = 1
+    Friendly = 2
