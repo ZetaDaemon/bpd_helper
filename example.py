@@ -1,43 +1,57 @@
-from bpd_helper import *
+# ruff: noqa: F405
+from bpd_helper import *  # noqa: F403
+from output_links import Behavior_CompareFloat
 
-[BpdVariable() for _ in range(2)]
+generate_variables(4)
 
-OnEquip = EventData(
-    "OnEquip",
+VAR_INSTIGATOR = 0
+VAR_CURRENT_SHIELD_ATTR = 1
+VAR_AMP_DRAIN_ATTR = 2
+# I'm not sure what this one is.
+VAR_UNKNOWN_ATTR = 3
+
+OnWeaponFired = EventData(
+    "OnWeaponFired",
     output_variables=[
-        VariableLinkData([0], "Instigator", EBehaviorVariableLinkType.BVARLINK_Output)
-    ],
-)
-OnUnequip = EventData(
-    "OnUnequip",
-    output_variables=[
-        VariableLinkData([1], "Instigator", EBehaviorVariableLinkType.BVARLINK_Output)
+        VariableLinkData(
+            [VAR_INSTIGATOR],
+            "SkillInstigator",
+            EBehaviorVariableLinkType.BVARLINK_Output,
+        ),
     ],
 )
 
-Behavior_ActivateSkill_0 = Behavior(
-    "GD_Weap_AssaultRifle.Barrel.AR_Barrel_MyCustomGun:BehaviorProviderDefinition_0.Behavior_ActivateSkill_0",
+Behavior_SetShieldTriggeredState_35 = Behavior(
+    "GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0.Behavior_SetShieldTriggeredState_35",
+    [VariableLinkData([VAR_INSTIGATOR], "Context", EBehaviorVariableLinkType.BVARLINK_Context)],
+)
+Behavior_CompareFloat_4 = Behavior(
+    "GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0.Behavior_CompareFloat_4",
     [
-        VariableLinkData([0], "Context", EBehaviorVariableLinkType.BVARLINK_Context),
-        VariableLinkData([0], "AdditionalTargetContext", EBehaviorVariableLinkType.BVARLINK_Input),
+        VariableLinkData([VAR_UNKNOWN_ATTR], "A", EBehaviorVariableLinkType.BVARLINK_Input),
+        VariableLinkData([VAR_CURRENT_SHIELD_ATTR], "B", EBehaviorVariableLinkType.BVARLINK_Input),
     ],
 )
-Behavior_DeactivateSkill_0 = Behavior(
-    "GD_Weap_AssaultRifle.Barrel.AR_Barrel_MyCustomGun:BehaviorProviderDefinition_0.Behavior_DeactivateSkill_0",
+Behavior_SimpleMath_4 = Behavior(
+    "GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0.Behavior_SimpleMath_4",
     [
-        VariableLinkData([1], "Context", EBehaviorVariableLinkType.BVARLINK_Context),
+        VariableLinkData([VAR_CURRENT_SHIELD_ATTR], "A", EBehaviorVariableLinkType.BVARLINK_Input),
+        VariableLinkData([VAR_AMP_DRAIN_ATTR], "B", EBehaviorVariableLinkType.BVARLINK_Input),
+        VariableLinkData(
+            [VAR_CURRENT_SHIELD_ATTR],
+            "Result",
+            EBehaviorVariableLinkType.BVARLINK_Output,
+        ),
     ],
 )
-Behavior_DeactivateSkill_1 = Behavior(
-    "GD_Weap_AssaultRifle.Barrel.AR_Barrel_MyCustomGun:BehaviorProviderDefinition_0.Behavior_DeactivateSkill_1",
-    [
-        VariableLinkData([1], "Context", EBehaviorVariableLinkType.BVARLINK_Context),
-    ],
+Behavior_PostAkEvent_57 = Behavior(
+    "GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0.Behavior_PostAkEvent_57",
+    [VariableLinkData([VAR_INSTIGATOR], "Context", EBehaviorVariableLinkType.BVARLINK_Context)],
 )
 
-OnEquip.add_output_link(BehaviorLink(Behavior_ActivateSkill_0))
+OnWeaponFired += BehaviorLink(Behavior_SetShieldTriggeredState_35)
+Behavior_SetShieldTriggeredState_35 += BehaviorLink(Behavior_CompareFloat_4, -1)
+Behavior_CompareFloat_4 += BehaviorLink(Behavior_SimpleMath_4, Behavior_CompareFloat.Equal)
+Behavior_SetShieldTriggeredState_35 += BehaviorLink(Behavior_PostAkEvent_57, -1)
 
-OnUnequip.add_output_link(BehaviorLink(Behavior_DeactivateSkill_0))
-Behavior_DeactivateSkill_0.add_output_link(BehaviorLink(Behavior_DeactivateSkill_1, -1))
-
-generate_bpd("GD_Weap_AssaultRifle.Barrel.AR_Barrel_MyCustomGun:BehaviorProviderDefinition_0")
+generate_bpd("GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0")
