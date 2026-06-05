@@ -46,10 +46,10 @@ class BPD_Event:
     """
 
     @classmethod
-    def Event(
+    def Event(  # noqa: PLR0913
         cls,
-        enabled: bool | None = True,  # noqa: FBT002
-        replicate: bool | None = False,  # noqa: FBT002
+        enabled: bool | None = True,
+        replicate: bool | None = False,
         max_trigger_count: int | None = 0,
         retrigger_delay: float | None = 0.0,
         filter_object: str | None = "None",

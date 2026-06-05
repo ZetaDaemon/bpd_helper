@@ -1,3 +1,10 @@
+# ruff: noqa: SLF001
+# Private members are accessed intentionally.
+"""Helper library for generating bl2/tps BehaviorProvideDefinition Commands.
+
+Intended to be used by standalone scripts, one per BPD command.
+"""
+
 from __future__ import annotations
 
 import inspect
@@ -455,14 +462,14 @@ def get_behavior_link_commands(
     return behavior_link_commands
 
 
-def generate_bpd(
+def generate_bpd(  # noqa: PLR0913
     bpd_name: str,
     sequence: int = 0,
     sequence_name: str = "Default",
-    enabled_on_spawn: bool = True,  # noqa: FBT002
-    sequence_enabled_mutex: bool = False,  # noqa: FBT002
+    enabled_on_spawn: bool = True,
+    sequence_enabled_mutex: bool = False,
     custom_enable_condition: str = "None",
-    include_variable_data: bool = False,  # noqa: FBT002
+    include_variable_data: bool = False,
 ) -> None:
     """Generate the bpd.
 
