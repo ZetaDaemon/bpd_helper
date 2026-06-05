@@ -1,4 +1,9 @@
 # ruff: noqa: F405
+"""Example bpd of the amp shield skill.
+
+variable_link_templates is intentionally not used here to keep it clear about the base usage.
+"""
+
 from bpd_helper import *  # noqa: F403
 from output_links import Behavior_CompareFloat
 
