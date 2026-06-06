@@ -3,6 +3,18 @@
 """Helper library for generating bl2/tps BehaviorProvideDefinition Commands.
 
 Intended to be used by standalone scripts, one per BPD command.
+
+General process is:
+Create all variables with generate_variables.
+Use edit_variable to modify any variables.
+Construct all the EventData objects.
+Construct all the Behavior objects.
+Link Behaviors to events and Behaviors to Behaviors with BehaviorLinks.
+Call generate_bpd to output the bpd to a file.
+
+Variables, Events and Behaviors are all automatically tracked,
+generate_bpd will automatically build the entire bpd based on how
+everything is setup.
 """
 
 from __future__ import annotations
@@ -474,7 +486,11 @@ def generate_bpd(  # noqa: PLR0913
     """Generate the bpd.
 
     Generates the bpd for the data in _ALL_EVENTS and _ALL_VARIABLES
-    and writes to a file.
+    and writes to a file, the file name is based on bpd_name.
+
+    Events are all automatically included, regardless of if they link to behaviors,
+    because events can have outputs, events have a use beyond just triggering behaviors.
+    Only Behaviors linked to by Events and other Behaviors will be included.
 
     Arguments:
         bpd_name: The name of the BPD, will also be used as the file name
