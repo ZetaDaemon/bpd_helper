@@ -64,8 +64,8 @@ class BPD_Event:
             max_trigger_count,
             retrigger_delay,
             filter_object,
-            output_variables,
-            output_links,
+            output_variables if output_variables is not None else [],
+            output_links if output_links is not None else [],
         )
 
 
@@ -645,3 +645,63 @@ class Behavior_ActivateSkill:
             property_name="AdditionalTargetContext",
             link_type=EBehaviorVariableLinkType.BVARLINK_Input,
         )
+
+
+class Behavior_DebugMessage:
+    class Input:
+        DebugBool: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="DebugBool",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+        DebugFloat: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="DebugFloat",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+        DebugInt: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="DebugInt",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+        DebugObject: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="DebugObject",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+        DebugVector: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="DebugVector",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+
+
+class Behavior_AssignVariable:
+    class Input:
+        Value: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="Value",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
+
+    class Output:
+        Result: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="Result",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Output,
+        )
+
+
+class Behavior_AssignObjectVariable(Behavior_AssignVariable): ...
+
+
+class Behavior_AssignFloatVariable(Behavior_AssignVariable): ...
+
+
+class Behavior_AssignIntVariable(Behavior_AssignVariable): ...
+
+
+class Behavior_AssignVectorVariable(Behavior_AssignVariable): ...
+
+
+class Behavior_AssignBoolVariable(Behavior_AssignVariable): ...
