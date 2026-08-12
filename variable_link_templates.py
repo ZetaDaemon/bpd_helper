@@ -19,12 +19,13 @@ from functools import partial
 
 from bpd_helper import (
     BehaviorLink,
+    BpdVariable,
     EBehaviorVariableLinkType,
     EventData,
     VariableLinkData,
 )
 
-type VariableLinkTemplate = Callable[[list[int]], VariableLinkData]
+type VariableLinkTemplate = Callable[[list[int | BpdVariable]], VariableLinkData]
 
 
 Context: VariableLinkTemplate = partial(
@@ -48,11 +49,11 @@ class BPD_Event:
     @classmethod
     def Event(  # noqa: PLR0913
         cls,
-        enabled: bool | None = True,
-        replicate: bool | None = False,
-        max_trigger_count: int | None = 0,
-        retrigger_delay: float | None = 0.0,
-        filter_object: str | None = "None",
+        enabled: bool = True,
+        replicate: bool = False,
+        max_trigger_count: int = 0,
+        retrigger_delay: float = 0.0,
+        filter_object: str = "None",
         output_variables: list[VariableLinkData] | None = None,
         output_links: list[BehaviorLink] | None = None,
     ) -> EventData:
@@ -524,19 +525,19 @@ class ProjectileDefinition:
             VariableLinkData,
             property_name="bWasCrit",
             link_type=EBehaviorVariableLinkType.BVARLINK_Output,
-            connection_index=0,
+            connection_index=1,
         )
         HealthDamage: VariableLinkTemplate = partial(
             VariableLinkData,
             property_name="HealthDamage",
             link_type=EBehaviorVariableLinkType.BVARLINK_Output,
-            connection_index=0,
+            connection_index=2,
         )
         ShieldDamage: VariableLinkTemplate = partial(
             VariableLinkData,
             property_name="ShieldDamage",
             link_type=EBehaviorVariableLinkType.BVARLINK_Output,
-            connection_index=0,
+            connection_index=3,
         )
 
     class OnDamagedFriendly(OnDamagedEnemy): ...
