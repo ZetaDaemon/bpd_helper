@@ -20,21 +20,31 @@ everything is setup.
 from __future__ import annotations
 
 import inspect
+import json
 import struct
+from contextlib import contextmanager
 from dataclasses import MISSING, dataclass, field, fields
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import TYPE_CHECKING, ClassVar, Self
+
+import behavior_variable_values
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 __all__ = [
     "Behavior",
     "BehaviorLink",
+    "BehaviorSequence",
+    "BpdVariable",
     "EBehaviorVariableLinkType",
     "EBehaviorVariableType",
     "EventData",
     "VariableLinkData",
     "edit_variable",
     "generate_bpd",
+    "generate_bpd_sequence",
     "generate_variables",
 ]
 
@@ -53,9 +63,10 @@ BPD_SEQUENCE_COMMAND = """(
     ConsolidatedLinkedVariables = ({})
 )"""
 
-_ALL_EVENTS: list[EventData] = []
+"""_ALL_EVENTS: list[EventData] = []
 _ALL_BEHAVIORS: list[Behavior] = []
-_ALL_VARIABLES: list[BpdVariable] = []
+_ALL_VARIABLES: list[BpdVariable] = []"""
+_SEQUENCE_STACK: list[BehaviorSequence] = []
 
 
 class EBehaviorVariableType(Enum):  # noqa: D101
@@ -107,25 +118,28 @@ class BpdVariable:
 
     """
 
-    var_type: EBehaviorVariableType = EBehaviorVariableType.BVAR_None
     name: str = ""
-    idx: int = -1
-    needs_command: bool = False
-    updated_name: bool = False
-    updated_type: bool = False
+    var_type: EBehaviorVariableType = EBehaviorVariableType.BVAR_None
+    value: behavior_variable_values.BehaviorVariableDataValue = None
+    needs_command: bool = field(default=False, init=False)
+    updated_name: bool = field(default=False, init=False)
+    updated_type: bool = field(default=False, init=False)
 
-    _command_str: ClassVar[str] = '(Name="{}",Type={})'
+    def to_dict(self, sequence: BehaviorSequence) -> dict:
+        value = self.value
+        if isinstance(value, behavior_variable_values.VariableValue):
+            value = value.resolve(sequence)
+        return {"Name": self.name, "Type": self.var_type.name, "Value": value}
+
+    _command_str: ClassVar[str] = '{"Name":"{}","Type":"{}","Value":{}}'
+
+    _command_str_no_value: ClassVar[str] = '{Name="{}",Type={}}'
 
     def __post_init__(self):  # noqa: ANN204
-        if self.idx == -1:
-            self.idx = len(_ALL_VARIABLES)
-            _ALL_VARIABLES.append(self)
+        if len(_SEQUENCE_STACK) < 1:
             return
-        if len(_ALL_VARIABLES) < (self.idx + 1):
-            _ALL_VARIABLES.extend(
-                [BpdVariable() for _ in range(self.idx + 1 - len(_ALL_VARIABLES))],
-            )
-        _ALL_VARIABLES[self.idx] = self
+        current_sequence = _SEQUENCE_STACK[-1]
+        current_sequence.variables.append(self)
 
 
 def generate_variables(count: int) -> None:
@@ -137,22 +151,24 @@ def generate_variables(count: int) -> None:
 def edit_variable(
     idx: int,
     name: str | None = None,
-    var_type: EBehaviorVariableType = None,
+    var_type: EBehaviorVariableType | None = None,
 ) -> int:
     """Set the properties of the BpdVariable.
 
     Set the properties of the BpdVariable at the specified index and enables 'needs_command'.
     Also returns the variable index for use.
     """
-    var = _ALL_VARIABLES[idx]
-    var.idx = idx
+    if len(_SEQUENCE_STACK) < 1:
+        msg = "There is no active sequence."
+        raise LookupError(msg)
+
+    current_sequence = _SEQUENCE_STACK[-1]
+
+    var = current_sequence.variables[idx]
     if var_type is not None:
         var.var_type = var_type
-        var.updated_type = True
     if name is not None:
         var.name = name
-        var.updated_name = True
-    var.needs_command = True
     return idx
 
 
@@ -188,19 +204,6 @@ class VariableLinkData:
         "LinkedVariables=(ArrayIndexAndLength={}),"
         "CachedProperty=None)"
     )
-
-    def __post_init__(self):  # noqa: ANN204, D105
-        if not isinstance(self.variable_indexes, list):
-            msg = "variable_indexes is not a list"
-            raise TypeError(msg)
-        for var_idx in self.variable_indexes:
-            if var_idx >= len(_ALL_VARIABLES):
-                msg = f"Variable index {var_idx} out of range of defined variables."
-                raise IndexError(msg)
-
-    def get_variable_indexes(self) -> list[int]:
-        """Get variable indexes."""
-        return [x if isinstance(x, int) else x.idx for x in self.variable_indexes]
 
     def _copy(self) -> VariableLinkData:
         return VariableLinkData(
@@ -256,7 +259,10 @@ class EventData:
     )
 
     def __post_init__(self):  # noqa: ANN204, D105
-        _ALL_EVENTS.append(self)
+        if len(_SEQUENCE_STACK) < 1:
+            return
+        current_sequence = _SEQUENCE_STACK[-1]
+        current_sequence.events.append(self)
 
     def gen_output_link(self, behavior: Behavior, link_id: int = 0, delay: int = 0) -> None:
         """Generate a BehaviorLink.
@@ -302,18 +308,16 @@ class Behavior:
 
     """
 
-    behavior: str
+    short_name: str
     linked_variables: list[VariableLinkData] = field(default_factory=list, hash=False)
     output_links: list[BehaviorLink] = field(default_factory=list, hash=False)
+    full_name: str | None = None
 
-    _variables_ArrayIndexAndLength: ClassVar[int] = 0  # noqa: N815
-    _output_ArrayIndexAndLength: ClassVar[int] = 0  # noqa: N815
+    _variables_ArrayIndexAndLength: int = field(default=0, init=False)  # noqa: N815
+    _output_ArrayIndexAndLength: int = field(default=0, init=False)  # noqa: N815
     _command_str: ClassVar[str] = (
         "(Behavior={},LinkedVariables=(ArrayIndexAndLength={}),OutputLinks=(ArrayIndexAndLength={}))"
     )
-
-    def __post_init__(self) -> None:  # noqa: D105
-        _ALL_BEHAVIORS.append(self)
 
     def gen_output_link(self, behavior: Behavior, link_id: int = 0, delay: int = 0) -> None:
         """Generate a BehaviorLink.
@@ -338,9 +342,10 @@ class Behavior:
         behavior without redefining the whole node.
         """
         return Behavior(
-            self.behavior,
+            self.short_name,
             [varlink._copy() for varlink in self.linked_variables],
             [outlink._copy() for outlink in self.output_links],
+            self.full_name,
         )
 
     def __repr__(self) -> str:  # noqa: D105
@@ -382,11 +387,201 @@ class BehaviorLink:
 
     def __repr__(self) -> str:  # noqa: D105
         return (
-            f"BehaviorLink({self.behavior.behavior.split('.')[-1]}"
+            f"BehaviorLink({self.behavior.short_name}"
             + (f",{self.link_id}" if self.link_id != 0 else "")
             + (f",{self.delay}" if self.delay != 0 else "")
             + (")")
         )
+
+
+@dataclass
+class BehaviorSequence:
+    name: str = "Default"
+    enabled_on_spawn: bool = True
+    enabled_mutex: bool = False
+    enable_condition: str = "None"
+    events: list[EventData] = field(default_factory=list)
+    variables: list[BpdVariable] = field(default_factory=list)
+
+    linked_variables: list[int] = field(default_factory=list, init=False)
+
+    @contextmanager
+    def define_for_sequence(self) -> Iterator[None]:
+        _SEQUENCE_STACK.append(self)
+        try:
+            yield
+        finally:
+            _SEQUENCE_STACK.pop(_SEQUENCE_STACK.index(self))
+
+    def lookup_variables_idx_len(self, bpd_vars: list[BpdVariable | int]) -> int:
+        var_indexes = [
+            self.variables.index(v) if isinstance(v, BpdVariable) else v for v in bpd_vars
+        ]
+        if (vars_len := len(var_indexes)) == 1:
+            return get_arrayindexandlength(var_indexes[0], 1)
+        if vars_len > 1:
+            i = len(self.linked_variables)
+            self.linked_variables.extend(var_indexes)
+            return get_arrayindexandlength(i, vars_len)
+        return 0
+
+    def _get_var_link_commands(
+        self,
+        var_links: list[VariableLinkData],
+    ) -> list[str]:
+        """Generate all the individual variable link commands.
+
+        Arguments:
+            var_links: the list of VariableLinkData to make commands for
+
+        """
+        variable_link_commands = []
+        for var_link in var_links:
+            command_str = var_link._command_str.format(
+                var_link.property_name,
+                var_link.link_type.name,
+                var_link.connection_index,
+                self.lookup_variables_idx_len(var_link.variable_indexes),
+            )
+            variable_link_commands.append(command_str)
+        return variable_link_commands
+
+    def generate_command(self, bpd_name: str) -> list[str]:
+        self.linked_variables = list(range(len(self.variables)))
+
+        behavior_stack: list[Behavior] = []
+        known_behaviors: list[Behavior] = []
+
+        event_commands: list[str] = []
+        behavior_commands: list[str] = []
+        behavior_link_commands: list[str] = []
+        variable_link_commands: list[str] = []
+
+        for event in self.events:
+            output_vars = get_arrayindexandlength(
+                len(variable_link_commands),
+                len(event.output_variables),
+            )
+            output_links = get_arrayindexandlength(
+                len(behavior_link_commands),
+                len(event.output_links),
+            )
+
+            variable_link_commands.extend(self._get_var_link_commands(event.output_variables))
+
+            # Find unqiue set of unseen behaviours,
+            behavior_stack.extend(
+                reversed(
+                    list(
+                        {
+                            link.behavior
+                            for link in event.output_links
+                            if link.behavior not in known_behaviors
+                        },
+                    ),
+                ),
+            )
+
+            behavior_link_commands.extend(
+                get_behavior_link_commands(event.output_links, known_behaviors),
+            )
+
+            command_str = event._command_str.format(
+                event.event_name,
+                event.enabled,
+                event.replicate,
+                event.max_trigger_count,
+                f"{event.retrigger_delay:f}",
+                event.filter_object,
+                output_vars,
+                output_links,
+            )
+            event_commands.append(command_str)
+
+            while len(behavior_stack) > 0:
+                behavior = behavior_stack.pop()
+                if behavior is None:
+                    continue
+                behavior._variables_ArrayIndexAndLength = get_arrayindexandlength(
+                    len(variable_link_commands),
+                    len(behavior.linked_variables),
+                )
+                variable_link_commands.extend(
+                    self._get_var_link_commands(behavior.linked_variables),
+                )
+
+                behavior._output_ArrayIndexAndLength = get_arrayindexandlength(
+                    len(behavior_link_commands),
+                    len(behavior.output_links),
+                )
+
+                behavior_stack.extend(
+                    reversed(
+                        list(
+                            {
+                                link.behavior
+                                for link in behavior.output_links
+                                if link.behavior not in known_behaviors
+                            }
+                        )
+                    )
+                )
+
+                behavior_link_commands.extend(
+                    get_behavior_link_commands(behavior.output_links, known_behaviors),
+                )
+
+        behavior_commands.extend(
+            [
+                behavior._command_str.format(
+                    behavior.full_name
+                    if behavior.full_name is not None
+                    else f"{bpd_name}.{behavior.short_name}",
+                    behavior._variables_ArrayIndexAndLength,
+                    behavior._output_ArrayIndexAndLength,
+                )
+                for behavior in known_behaviors
+            ],
+        )
+        for var in self.variables:
+            if isinstance(var.value, behavior_variable_values.VariableValue):
+                var.value.resolve(self)
+        return [
+            "(",
+            f'    BehaviorSequenceName = "{self.name}",',
+            f"    bEnabledOnSpawn = {self.enabled_on_spawn},",
+            f"    bSequenceEnabledMutex = {self.enabled_mutex},",
+            f"    CustomEnableCondition = {self.enable_condition},",
+            f"    EventData2 = ({','.join(event_commands)}),",
+            f"    BehaviorData2 = ({','.join(behavior_commands)}),",
+            f"    ConsolidatedOutputLinkData = ({','.join(behavior_link_commands)}),",
+            f"    ConsolidatedVariableLinkData = ({','.join(variable_link_commands)}),",
+            f"    ConsolidatedLinkedVariables = ({','.join(str(v) for v in self.linked_variables)})",
+            ")",
+        ]
+
+    def get_variable_commands(self, bpd_name: str, sequence_idx: int) -> list[str]:
+        commands: list[str] = []
+        for idx, variable in enumerate(self.variables):
+            match variable.var_type:
+                case EBehaviorVariableType.BVAR_None:
+                    continue
+                case (
+                    EBehaviorVariableType.BVAR_NamedVariable
+                    | EBehaviorVariableType.BVAR_NamedKismetVariable
+                ):
+                    d = variable.to_dict(self)
+                    d.pop("Value")
+                case _:
+                    d = variable.to_dict(self)
+                    if d["Value"] is None:
+                        d.pop("Value")
+
+            commands.append(
+                f"set_variable {bpd_name} {sequence_idx} {idx} "
+                f"{json.dumps(d, separators=(',', ':'))}\n"
+            )
+        return commands
 
 
 def get_arrayindexandlength(idx: int, length: int) -> int:
@@ -419,36 +614,6 @@ def parse_linkidandlinkedbehavior(number: int) -> tuple[int, int]:
     return (linkid, behavior)
 
 
-def get_var_link_commands(
-    var_links: list[VariableLinkData],
-    variable_links: list[int],
-) -> list[str]:
-    """Generate all the individual variable link commands.
-
-    Arguments:
-        var_links: the list of VariableLinkData to make commands for
-        variable_links: list of indexes to Variables, will be the ConsolidatedLinkedVariables
-
-    """
-    variable_link_commands = []
-    for var_link in var_links:
-        idx = 0
-        length = len(var_link.get_variable_indexes())
-        if length > 1:
-            idx = len(variable_links)
-            variable_links.extend(var_link.get_variable_indexes())
-        elif length == 1:
-            idx = var_link.get_variable_indexes()[0]
-        command_str = var_link._command_str.format(
-            var_link.property_name,
-            var_link.link_type.name,
-            var_link.connection_index,
-            get_arrayindexandlength(idx, length),
-        )
-        variable_link_commands.append(command_str)
-    return variable_link_commands
-
-
 def get_behavior_link_commands(
     behaviour_links: list[BehaviorLink],
     known_behaviors: list[Behavior],
@@ -474,15 +639,7 @@ def get_behavior_link_commands(
     return behavior_link_commands
 
 
-def generate_bpd(  # noqa: PLR0913
-    bpd_name: str,
-    sequence: int = 0,
-    sequence_name: str = "Default",
-    enabled_on_spawn: bool = True,
-    sequence_enabled_mutex: bool = False,
-    custom_enable_condition: str = "None",
-    include_variable_data: bool = False,
-) -> None:
+def generate_bpd(bpd_name: str, sequences: list[BehaviorSequence], set_early: bool = True) -> None:
     """Generate the bpd.
 
     Generates the bpd for the data in _ALL_EVENTS and _ALL_VARIABLES
@@ -498,181 +655,51 @@ def generate_bpd(  # noqa: PLR0913
         sequence: index in the BehaviorSequences as *usually* only one can be edited at a time
                     a sequence less than 0 results in it editing the entire BPD rather than just
                     one entry.
-        sequence_name: BehaviorSequenceName
-        enabled_on_spawn: bEnabledOnSpawn
-        sequence_enabled_mutex: bSequenceEnabledMutex
-        custom_enable_condition: CustomEnableCondition
-        include_variable_data: Should variables be included within the bpd itself or as
-                                additional hotfixes for the modified ones.
 
     """
     caller_dir = Path(inspect.stack()[1].filename).parent
-    event_commands: list[str] = []
-    behavior_commands: list[str] = []
-    variable_data_commands: list[str] = []
-    behavior_link_commands: list[str] = []
-    variable_link_commands: list[str] = []
-    variable_links: list[int] = list(range(len(_ALL_VARIABLES)))
-    behavior_stack: list[Behavior] = []
-    known_behaviors: list[Behavior] = []
-    for event in _ALL_EVENTS:
-        output_vars = get_arrayindexandlength(
-            len(variable_link_commands),
-            len(event.output_variables),
-        )
-        output_links = get_arrayindexandlength(len(behavior_link_commands), len(event.output_links))
 
-        variable_link_commands.extend(get_var_link_commands(event.output_variables, variable_links))
+    outfile_path = caller_dir / f"{bpd_name}.txt"
 
-        # Find unqiue set of unseen behaviours,
-        # add to stack in reverse order so they will be handled in order linked to
-        new_behaviors = reversed(
-            list(
-                {
-                    link.behavior
-                    for link in event.output_links
-                    if link.behavior not in known_behaviors
-                },
-            ),
-        )
-        behavior_stack.extend(new_behaviors)
-
-        behavior_link_commands.extend(
-            get_behavior_link_commands(event.output_links, known_behaviors),
-        )
-
-        command_str = event._command_str.format(
-            event.event_name,
-            event.enabled,
-            event.replicate,
-            event.max_trigger_count,
-            f"{event.retrigger_delay:f}",
-            event.filter_object,
-            output_vars,
-            output_links,
-        )
-        event_commands.append(command_str)
-
-        while len(behavior_stack) > 0:
-            behavior = behavior_stack[-1]
-            behavior_stack.pop()
-            if behavior is None:
-                continue
-            behavior._variables_ArrayIndexAndLength = get_arrayindexandlength(
-                len(variable_link_commands),
-                len(behavior.linked_variables),
-            )
-            variable_link_commands.extend(
-                get_var_link_commands(behavior.linked_variables, variable_links),
-            )
-
-            behavior._output_ArrayIndexAndLength = get_arrayindexandlength(
-                len(behavior_link_commands),
-                len(behavior.output_links),
-            )
-
-            new_behaviors = reversed(
-                list(
-                    {
-                        link.behavior
-                        for link in behavior.output_links
-                        if link.behavior not in known_behaviors
-                    },
-                ),
-            )
-            behavior_stack.extend(new_behaviors)
-
-            behavior_link_commands.extend(
-                get_behavior_link_commands(behavior.output_links, known_behaviors),
-            )
-
-    behavior_commands.extend(
-        [
-            behavior._command_str.format(
-                behavior.behavior,
-                behavior._variables_ArrayIndexAndLength,
-                behavior._output_ArrayIndexAndLength,
-            )
-            for behavior in known_behaviors
-        ],
-    )
-
-    # Appends all unused behaviors to the end of the bpd.
-    # Was mostly used for testing but I'm leaving it here just in case.
-    # May later add a toggle for it in the function call?
-    """for behavior in _ALL_BEHAVIORS:
-        if behavior in known_behaviors:
-            continue
-        behavior._variables_ArrayIndexAndLength = get_arrayindexandlength(
-            len(variable_link_commands),
-            len(behavior.linked_variables),
-        )
-        variable_link_commands.extend(
-            get_var_link_commands(behavior.linked_variables, variable_links),
-        )
-        behavior_commands.append(
-            behavior._command_str.format(
-                behavior.behavior,
-                behavior._variables_ArrayIndexAndLength,
-                behavior._output_ArrayIndexAndLength,
-            ),
-        )"""
-
-    if include_variable_data:
-        for variable in _ALL_VARIABLES:
-            name = f'"{variable.name}"' if variable.name != "" else ""
-            variable_data_commands.append(f"(Name={name},Type={variable.var_type.name})")
-
-    outfile_path = (
-        caller_dir / f"{bpd_name.replace(':', '.')}{f'[{sequence}]' if sequence >= 0 else ''}.txt"
-    )
+    sequence_commands = []
+    variable_commands = []
+    for idx, sequence in enumerate(sequences):
+        cmd = sequence.generate_command(bpd_name)
+        if set_early:
+            cmd = [line.lstrip() for line in cmd]
+            sequence_commands.append("".join(cmd))
+        else:
+            cmd = [f"    {line}" for line in cmd]
+            sequence_commands.append("\n".join(cmd))
+        variable_commands.extend(sequence.get_variable_commands(bpd_name, idx))
 
     with outfile_path.open("w") as outfile:
-        if include_variable_data:
+        if set_early:
             outfile.write(
-                "\n".join(
-                    (
-                        f"set {bpd_name} BehaviorSequences"
-                        f"{f'[{sequence}]' if sequence >= 0 else '('}",
-                        "(",
-                        f'    BehaviorSequenceName = "{sequence_name}",',
-                        f"    bEnabledOnSpawn = {enabled_on_spawn},",
-                        f"    bSequenceEnabledMutex = {sequence_enabled_mutex},",
-                        f"    CustomEnableCondition = {custom_enable_condition},",
-                        f"    EventData2 = ({','.join(event_commands)}),",
-                        f"    BehaviorData2 = ({','.join(behavior_commands)}),",
-                        f"    VariableData = ({','.join(variable_data_commands)}),",
-                        f"    ConsolidatedOutputLinkData = ({','.join(behavior_link_commands)}),",
-                        f"    ConsolidatedVariableLinkData = ({','.join(variable_link_commands)}),",
-                        f"    ConsolidatedLinkedVariables = ({','.join([str(x) for x in variable_links])})",  # noqa: E501
-                        f"{')' if sequence < 0 else ''})\n",
-                    ),
-                ),
+                f"set_early {bpd_name} BehaviorSequences ({','.join(sequence_commands)})",
             )
         else:
             outfile.write(
-                "\n".join(
-                    (
-                        f"set {bpd_name} BehaviorSequences[{sequence}]",
-                        "(",
-                        f'    BehaviorSequenceName = "{sequence_name}",',
-                        f"    bEnabledOnSpawn = {enabled_on_spawn},",
-                        f"    bSequenceEnabledMutex = {sequence_enabled_mutex},",
-                        f"    CustomEnableCondition = {custom_enable_condition},",
-                        f"    EventData2 = ({','.join(event_commands)}),",
-                        f"    BehaviorData2 = ({','.join(behavior_commands)}),",
-                        f"    ConsolidatedOutputLinkData = ({','.join(behavior_link_commands)}),",
-                        f"    ConsolidatedVariableLinkData = ({','.join(variable_link_commands)}),",
-                        f"    ConsolidatedLinkedVariables = ({','.join([str(x) for x in variable_links])})",  # noqa: E501
-                        ")\n",
-                    ),
-                ),
+                f"set {bpd_name} BehaviorSequences\n(\n{',\n'.join(sequence_commands)}\n)",
             )
-        if not include_variable_data:
-            for variable in _ALL_VARIABLES:
-                if not variable.needs_command:
-                    continue
-                outfile.write(
-                    f"set {bpd_name} BehaviorSequences[{sequence}].VariableData[{variable.idx}] "
-                    f'(Name="{variable.name}",Type={variable.var_type.name})\n',
-                )
+        outfile.write("\n\n")
+        outfile.writelines(variable_commands)
+
+
+def generate_bpd_sequence(bpd_name: str, sequence: BehaviorSequence, idx: int) -> None:
+    caller_dir = Path(inspect.stack()[1].filename).parent
+
+    outfile_path = caller_dir / f"{bpd_name}[{idx}].txt"
+
+    variable_commands = []
+    cmd = sequence.generate_command(bpd_name)
+    cmd = [f"{line}" for line in cmd]
+    sequence_command = "\n".join(cmd)
+    variable_commands.extend(sequence.get_variable_commands(bpd_name, idx))
+
+    with outfile_path.open("w") as outfile:
+        outfile.write(
+            f"set {bpd_name} BehaviorSequences[{idx}]\n{sequence_command}",
+        )
+        outfile.write("\n")
+        outfile.writelines(variable_commands)
