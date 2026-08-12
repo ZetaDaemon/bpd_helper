@@ -82,3 +82,8 @@ class Behavior_OpinionSwitch(IntEnum):
     Enemy = 0
     Neutral = 1
     Friendly = 2
+
+
+class Behavior_IsSequenceEnabled(IntEnum):
+    Yes = 0
+    No = 1
