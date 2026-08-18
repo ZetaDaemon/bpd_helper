@@ -562,6 +562,9 @@ class BehaviorSequence:
 
     def get_variable_commands(self, bpd_name: str, sequence_idx: int) -> list[str]:
         commands: list[str] = []
+
+        set_all = EBehaviorVariableType.BVAR_None not in [var.var_type for var in self.variables]
+
         for idx, variable in enumerate(self.variables):
             match variable.var_type:
                 case EBehaviorVariableType.BVAR_None:
@@ -577,10 +580,15 @@ class BehaviorSequence:
                     if d["Value"] is None:
                         d.pop("Value")
 
-            commands.append(
-                f"set_variable {bpd_name} {sequence_idx} {idx} "
-                f"{json.dumps(d, separators=(',', ':'))}\n"
-            )
+            if set_all:
+                commands.append(f"{json.dumps(d, separators=(',', ':'))}")
+            else:
+                commands.append(
+                    f"set_variable {bpd_name} {sequence_idx} {idx} "
+                    f"{json.dumps(d, separators=(',', ':'))}\n"
+                )
+        if set_all:
+            return [f"set_variable_data {bpd_name} {sequence_idx} [{','.join(commands)}]\n"]
         return commands
 
 
@@ -682,7 +690,7 @@ def generate_bpd(bpd_name: str, sequences: list[BehaviorSequence], set_early: bo
             outfile.write(
                 f"set {bpd_name} BehaviorSequences\n(\n{',\n'.join(sequence_commands)}\n)",
             )
-        outfile.write("\n\n")
+        outfile.write("\n")
         outfile.writelines(variable_commands)
 
 
