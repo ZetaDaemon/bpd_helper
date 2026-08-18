@@ -667,7 +667,7 @@ def generate_bpd(bpd_name: str, sequences: list[BehaviorSequence], set_early: bo
     """
     caller_dir = Path(inspect.stack()[1].filename).parent
 
-    outfile_path = caller_dir / f"{bpd_name}.txt"
+    outfile_path = caller_dir / f"{bpd_name.replace(':', '.')}.txt"
 
     sequence_commands = []
     variable_commands = []
@@ -697,7 +697,7 @@ def generate_bpd(bpd_name: str, sequences: list[BehaviorSequence], set_early: bo
 def generate_bpd_sequence(bpd_name: str, sequence: BehaviorSequence, idx: int) -> None:
     caller_dir = Path(inspect.stack()[1].filename).parent
 
-    outfile_path = caller_dir / f"{bpd_name}[{idx}].txt"
+    outfile_path = caller_dir / f"{bpd_name.replace(':', '.')}[{idx}].txt"
 
     variable_commands = []
     cmd = sequence.generate_command(bpd_name)
