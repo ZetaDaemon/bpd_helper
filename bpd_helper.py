@@ -141,6 +141,12 @@ class BpdVariable:
         current_sequence = _SEQUENCE_STACK[-1]
         current_sequence.variables.append(self)
 
+    def copy(self) -> BpdVariable:
+        value = self.value
+        if isinstance(value, behavior_variable_values.VariableValue):
+            value = value.copy()
+        return BpdVariable(self.name, self.var_type, value)
+
 
 def generate_variables(count: int) -> None:
     """Generate 'count' BpdVariable objects."""

@@ -160,6 +160,19 @@ class VariableValue(ABC):
             result[f.name] = fval
         return result
 
+    @classmethod
+    def new_of_self(cls):
+        return cls()
+
+    def copy(self):
+        val = self.new_of_self()
+        for f in fields(self):
+            fval = getattr(self, f.name)
+            if isinstance(fval, VariableValue):
+                fval = fval.copy()
+            setattr(val, f.name, fval)
+        return val
+
 
 @dataclass
 class SubarrayData(VariableValue):
@@ -172,6 +185,11 @@ class SubarrayData(VariableValue):
         if self._array_index_and_length is None:
             self._array_index_and_length = sequence.lookup_variables_idx_len(self.variables)
         return {"ArrayIndexAndLength": self._array_index_and_length}
+
+    def copy(self):
+        return SubarrayData(
+            [x.copy() if isinstance(x, bpd_helper.BpdVariable) else x for x in self.variables],
+        )
 
 
 @dataclass
