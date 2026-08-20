@@ -108,23 +108,23 @@ def validate_variable_value(  # noqa: C901, PLR0912, PLR0915
                 msg = "Cannot set a value for BVAR_None."
 
         case EBehaviorVariableType.BVAR_Bool:
-            if not isinstance(value, bool):
+            if value is not None and not isinstance(value, bool):
                 msg = "Value for a BVAR_Bool must be a bool."
 
         case EBehaviorVariableType.BVAR_Int:
-            if not isinstance(value, int):
+            if value is not None and not isinstance(value, int):
                 msg = "Value for a BVAR_Int must be a int."
 
         case EBehaviorVariableType.BVAR_Float:
-            if not isinstance(value, float | int):
+            if value is not None and not isinstance(value, float | int):
                 msg = "Value for a BVAR_Float must be a float."
 
         case EBehaviorVariableType.BVAR_Vector:
-            if not isinstance(value, behavior_variable_values.BVVector):
+            if value is not None and not isinstance(value, behavior_variable_values.BVVector):
                 msg = "Value for a BVAR_Vector must be a BVVector."
 
         case EBehaviorVariableType.BVAR_Object:
-            if not isinstance(value, str):
+            if value is not None and not isinstance(value, str):
                 msg = "Value for a BVAR_Object must be a ObjectPath."
 
         case EBehaviorVariableType.BVAR_AllPlayers:
