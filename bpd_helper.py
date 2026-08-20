@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from dataclasses import MISSING, dataclass, field, fields
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Self
+from typing import TYPE_CHECKING, ClassVar, Literal, Self, overload
 
 import behavior_variable_values
 
@@ -66,7 +66,8 @@ BPD_SEQUENCE_COMMAND = """(
 """_ALL_EVENTS: list[EventData] = []
 _ALL_BEHAVIORS: list[Behavior] = []
 _ALL_VARIABLES: list[BpdVariable] = []"""
-_SEQUENCE_STACK: list[BehaviorSequence] = []
+
+_CURRENT_SEQUENCE: BehaviorSequence | None = None
 
 
 class EBehaviorVariableType(Enum):  # noqa: D101
@@ -95,7 +96,84 @@ class EBehaviorVariableLinkType(Enum):  # noqa: D101
     BVARLINK_Output = 3
 
 
-@dataclass
+def validate_variable_value(  # noqa: C901, PLR0912, PLR0915
+    var_type: EBehaviorVariableType,
+    value: behavior_variable_values.BehaviorVariableDataValue,
+) -> None:
+    """Validate the value for the variable type."""
+    msg = None
+    match var_type:
+        case EBehaviorVariableType.BVAR_None:
+            if value is not None:
+                msg = "Cannot set a value for BVAR_None."
+
+        case EBehaviorVariableType.BVAR_Bool:
+            if not isinstance(value, bool):
+                msg = "Value for a BVAR_Bool must be a bool."
+
+        case EBehaviorVariableType.BVAR_Int:
+            if not isinstance(value, int):
+                msg = "Value for a BVAR_Int must be a int."
+
+        case EBehaviorVariableType.BVAR_Float:
+            if not isinstance(value, float | int):
+                msg = "Value for a BVAR_Float must be a float."
+
+        case EBehaviorVariableType.BVAR_Vector:
+            if not isinstance(value, behavior_variable_values.BVVector):
+                msg = "Value for a BVAR_Vector must be a BVVector."
+
+        case EBehaviorVariableType.BVAR_Object:
+            if not isinstance(value, str):
+                msg = "Value for a BVAR_Object must be a ObjectPath."
+
+        case EBehaviorVariableType.BVAR_AllPlayers:
+            if value is not None:
+                msg = "Cannot set a value for BVAR_AllPlayers."
+
+        case EBehaviorVariableType.BVAR_Attribute:
+            if not isinstance(value, behavior_variable_values.BVAttributeData):
+                msg = "Value for a BVAR_Attribute must be a BVAttributeData."
+
+        case EBehaviorVariableType.BVAR_InstanceData:
+            if not isinstance(value, behavior_variable_values.BVInstanceData):
+                msg = "Value for a BVAR_InstanceData must be a BVInstanceData."
+
+        case EBehaviorVariableType.BVAR_NamedVariable:
+            if value is not None:
+                msg = "Cannot set a value for BVAR_NamedVariable."
+
+        case EBehaviorVariableType.BVAR_NamedKismetVariable:
+            if value is not None:
+                msg = "Cannot set a value for BVAR_NamedKismetVariable."
+
+        case EBehaviorVariableType.BVAR_DirectionVector:
+            if not isinstance(value, behavior_variable_values.BVDirectionVectorData):
+                msg = "Value for a BVAR_DirectionVector must be a BVDirectionVectorData."
+
+        case EBehaviorVariableType.BVAR_AttachmentLocation:
+            if not isinstance(value, behavior_variable_values.BVAttachmentLocationData):
+                msg = "Value for a BVAR_AttachmentLocation must be a BVAttachmentLocationData."
+
+        case EBehaviorVariableType.BVAR_UnaryMath:
+            if not isinstance(value, behavior_variable_values.BVUnaryMathData):
+                msg = "Value for a BVAR_UnaryMath must be a BVUnaryMathData."
+
+        case EBehaviorVariableType.BVAR_BinaryMath:
+            if not isinstance(value, behavior_variable_values.BVBinaryMathData):
+                msg = "Value for a BVAR_BinaryMath must be a BVBinaryMathData."
+
+        case EBehaviorVariableType.BVAR_Flag:
+            if not isinstance(value, behavior_variable_values.BVFlagData):
+                msg = "Value for a BVAR_Flag must be a BVFlagData."
+
+        case _:
+            msg = f"Unknown variable type {var_type}."
+
+    if msg is not None:
+        raise ValueError(msg)
+
+
 class BpdVariable:
     """An object to represent an entry in the VariableData array.
 
@@ -118,34 +196,180 @@ class BpdVariable:
 
     """
 
-    name: str = ""
+    name: str
     var_type: EBehaviorVariableType = EBehaviorVariableType.BVAR_None
-    value: behavior_variable_values.BehaviorVariableDataValue = None
-    needs_command: bool = field(default=False, init=False)
-    updated_name: bool = field(default=False, init=False)
-    updated_type: bool = field(default=False, init=False)
+    _value: behavior_variable_values.BehaviorVariableDataValue = None
+
+    @property
+    def value(self) -> behavior_variable_values.BehaviorVariableDataValue:
+        """Get value."""
+        return self._value
+
+    @value.setter
+    def value(self, value: behavior_variable_values.BehaviorVariableDataValue) -> None:
+        """Check value is valid and set."""
+        validate_variable_value(self.var_type, value)
+        self._value = value
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_None],
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Bool],
+        value: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Int],
+        value: int = 0,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Float],
+        value: float = 0.0,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Vector],
+        value: behavior_variable_values.BVVector | None = None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Object],
+        value: behavior_variable_values.ObjectName | None = None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_AllPlayers],
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Attribute],
+        value: behavior_variable_values.BVAttributeData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_InstanceData],
+        value: behavior_variable_values.BVInstanceData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_NamedVariable],
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_NamedKismetVariable],
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_DirectionVector],
+        value: behavior_variable_values.BVDirectionVectorData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_AttachmentLocation],
+        value: behavior_variable_values.BVAttachmentLocationData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_UnaryMath],
+        value: behavior_variable_values.BVUnaryMathData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_BinaryMath],
+        value: behavior_variable_values.BVBinaryMathData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        var_type: Literal[EBehaviorVariableType.BVAR_Flag],
+        value: behavior_variable_values.BVFlagData,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        name: str = "",
+        var_type: EBehaviorVariableType = EBehaviorVariableType.BVAR_None,
+        value: behavior_variable_values.BehaviorVariableDataValue = None,
+    ) -> None:
+        self.name = name
+        self.var_type = var_type
+        self.value = value
+
+        if _CURRENT_SEQUENCE is not None:
+            _CURRENT_SEQUENCE.variables.append(self)
 
     def to_dict(self, sequence: BehaviorSequence) -> dict:
+        """Get the value as a dictionary for set variable commands."""
         value = self.value
         if isinstance(value, behavior_variable_values.VariableValue):
             value = value.resolve(sequence)
         return {"Name": self.name, "Type": self.var_type.name, "Value": value}
 
-    _command_str: ClassVar[str] = '{"Name":"{}","Type":"{}","Value":{}}'
-
-    _command_str_no_value: ClassVar[str] = '{Name="{}",Type={}}'
-
-    def __post_init__(self):  # noqa: ANN204
-        if len(_SEQUENCE_STACK) < 1:
-            return
-        current_sequence = _SEQUENCE_STACK[-1]
-        current_sequence.variables.append(self)
-
     def copy(self) -> BpdVariable:
+        """Get a copy.
+
+        Automatically copies any variables in SubarrayData
+        which will end up in the BehaviorSequence struct.
+        """
         value = self.value
         if isinstance(value, behavior_variable_values.VariableValue):
             value = value.copy()
-        return BpdVariable(self.name, self.var_type, value)
+        return BpdVariable(self.name, self.var_type, value)  # ty: ignore[no-matching-overload]
 
 
 def generate_variables(count: int) -> None:
@@ -164,13 +388,11 @@ def edit_variable(
     Set the properties of the BpdVariable at the specified index and enables 'needs_command'.
     Also returns the variable index for use.
     """
-    if len(_SEQUENCE_STACK) < 1:
+    if _CURRENT_SEQUENCE is None:
         msg = "There is no active sequence."
-        raise LookupError(msg)
+        raise RuntimeError(msg)
 
-    current_sequence = _SEQUENCE_STACK[-1]
-
-    var = current_sequence.variables[idx]
+    var = _CURRENT_SEQUENCE.variables[idx]
     if var_type is not None:
         var.var_type = var_type
     if name is not None:
@@ -265,10 +487,8 @@ class EventData:
     )
 
     def __post_init__(self):  # noqa: ANN204, D105
-        if len(_SEQUENCE_STACK) < 1:
-            return
-        current_sequence = _SEQUENCE_STACK[-1]
-        current_sequence.events.append(self)
+        if _CURRENT_SEQUENCE is not None:
+            _CURRENT_SEQUENCE.events.append(self)
 
     def gen_output_link(self, behavior: Behavior, link_id: int = 0, delay: int = 0) -> None:
         """Generate a BehaviorLink.
@@ -413,11 +633,16 @@ class BehaviorSequence:
 
     @contextmanager
     def define_for_sequence(self) -> Iterator[None]:
-        _SEQUENCE_STACK.append(self)
+        """Automatically add BpdVariables and EventData to this sequence."""
+        global _CURRENT_SEQUENCE  # noqa: PLW0603
+        if _CURRENT_SEQUENCE is not None:
+            msg = "Cannot use define_for_sequence while already defining for a different sequence."
+            raise RuntimeError(msg)
+        _CURRENT_SEQUENCE = self
         try:
             yield
         finally:
-            _SEQUENCE_STACK.pop(_SEQUENCE_STACK.index(self))
+            _CURRENT_SEQUENCE = None
 
     def lookup_variables_idx_len(self, bpd_vars: list[BpdVariable | int]) -> int:
         var_indexes = [

@@ -5,6 +5,10 @@ from enum import IntEnum
 import bpd_helper
 
 
+type ObjectName = str
+"""The name of an Object."""
+
+
 class EBinaryMathOperation:
     class EBoolResult(IntEnum):
         BoolBool_XNOR = 2
@@ -215,8 +219,8 @@ class AttributeInitializationData(VariableValue):
     """Wrapped Engine.AttributeInitializationDefinition:AttributeInitializationData."""
 
     BaseValueConstant: float = 0
-    BaseValueAttribute: str = "None"
-    InitializationDefinition: str = "None"
+    BaseValueAttribute: ObjectName = "None"
+    InitializationDefinition: ObjectName = "None"
     BaseValueScaleConstant: float = 0
 
 
@@ -272,14 +276,14 @@ class BVUnaryMathData(VariableValue):
 @dataclass
 class BVFlagData(VariableValue):
     ContextVariable: SubarrayData | None = field(default=None)
-    FlagDef: str = "None"
+    FlagDef: ObjectName = "None"
 
 
 type BehaviorVariableDataValue = (
     int
     | float
     | bool
-    | str
+    | ObjectName
     | BVVector
     | BVAttributeData
     | BVDirectionVectorData
