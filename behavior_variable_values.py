@@ -200,18 +200,18 @@ class SubarrayData(VariableValue):
 class Vector(VariableValue):
     """Wrapped Core.Object:Vector."""
 
-    Pitch: float = 0
-    Yaw: float = 0
-    Roll: float = 0
+    X: float = 0
+    Y: float = 0
+    Z: float = 0
 
 
 @dataclass
 class Rotator(VariableValue):
     """Wrapped Core.Object:Rotator."""
 
-    X: float = 0
-    Y: float = 0
-    Z: float = 0
+    Pitch: float = 0
+    Yaw: float = 0
+    Roll: float = 0
 
 
 @dataclass
