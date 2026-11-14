@@ -1,4 +1,4 @@
-# ruff: noqa: N801, D101
+# ruff: noqa: N801D101
 # Naming matches the UE objects and functions so those warnings can be ignored.
 """Various behavior output links as enums.
 
@@ -87,3 +87,12 @@ class Behavior_OpinionSwitch(IntEnum):
 class Behavior_IsSequenceEnabled(IntEnum):
     Yes = 0
     No = 1
+
+
+class Behavior_StatusEffectSwitch(IntEnum):
+    Ignite = 1
+    Corrosive = 2
+    Shock = 3
+    Amp = 4
+    Slow = 5
+    Healing = 6

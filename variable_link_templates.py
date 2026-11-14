@@ -100,7 +100,28 @@ class Behavior_BoolMath(Behavior_Math): ...
 class Behavior_IntMath(Behavior_Math): ...
 
 
-class Behavior_VectorMath(Behavior_Math): ...
+class Behavior_VectorMath(Behavior_Math):
+    class Output:
+        Length: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="Length",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Output,
+        )
+        VectorResult: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="VectorResult",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Output,
+            connection_index=1,
+        )
+
+
+class Behavior_CompareBool:
+    class Input:
+        BoolValue: VariableLinkTemplate = partial(
+            VariableLinkData,
+            property_name="BoolValue",
+            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+        )
 
 
 class Behavior_CompareFloat:

@@ -1,0 +1,10 @@
+README.md
+behavior_variable_values.py
+bpd_helper.py
+output_links.py
+pyproject.toml
+variable_link_templates.py
+bpd_helper.egg-info/PKG-INFO
+bpd_helper.egg-info/SOURCES.txt
+bpd_helper.egg-info/dependency_links.txt
+bpd_helper.egg-info/top_level.txt
