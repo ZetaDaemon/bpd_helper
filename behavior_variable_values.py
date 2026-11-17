@@ -1,9 +1,10 @@
-from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field, fields
+from abc import ABC
+from collections.abc import Mapping
+from dataclasses import dataclass, field, fields
 from enum import IntEnum
+from typing import override
 
 import bpd_helper
-
 
 type ObjectName = str
 """The name of an Object."""
@@ -151,10 +152,8 @@ class EDirectionRelativeToParent(IntEnum):
 @dataclass
 class VariableValue(ABC):
     def resolve(
-        self,
-        sequence: bpd_helper.BehaviorSequence,
-        /,
-    ) -> dict[str, int | float | bool | str]:
+        self, sequence: bpd_helper.BehaviorSequence, /
+    ) -> Mapping[str, int | float | bool | str]:
         result = {}
         for f in fields(self):
             if (fval := getattr(self, f.name)) == f.default:
@@ -183,16 +182,18 @@ class SubarrayData(VariableValue):
     """Wrapped GearboxFramework.BehaviorProviderDefinition:SubarrayData."""
 
     variables: list[int | bpd_helper.BpdVariable] = field(default_factory=list)
-    _array_index_and_length: int | None = field(default=None, init=False)
 
-    def resolve(self, sequence: bpd_helper.BehaviorSequence, /) -> dict:
-        if self._array_index_and_length is None:
-            self._array_index_and_length = sequence.lookup_variables_idx_len(self.variables)
-        return {"ArrayIndexAndLength": self._array_index_and_length}
+    @override
+    def resolve(self, sequence: bpd_helper.BehaviorSequence, /) -> Mapping[str, int]:
+        cache = sequence.resolved_subarrays
+        key = id(self)
+        if key not in cache:
+            cache[key] = sequence.lookup_variables_idx_len(self.variables)
+        return {"ArrayIndexAndLength": cache[key]}
 
     def copy(self):
         return SubarrayData(
-            [x.copy() if isinstance(x, bpd_helper.BpdVariable) else x for x in self.variables],
+            [x.copy() if isinstance(x, bpd_helper.BpdVariable) else x for x in self.variables]
         )
 
 

@@ -5,6 +5,7 @@ variable_link_templates is intentionally not used here to keep it clear about th
 """
 
 from bpd_helper import *  # noqa: F403
+from command_writer import generate_bpd
 from output_links import Behavior_CompareFloat
 
 generate_variables(4)
@@ -19,10 +20,8 @@ OnWeaponFired = EventData(
     "OnWeaponFired",
     output_variables=[
         VariableLinkData(
-            [VAR_INSTIGATOR],
-            "SkillInstigator",
-            EBehaviorVariableLinkType.BVARLINK_Output,
-        ),
+            [VAR_INSTIGATOR], "SkillInstigator", EBehaviorVariableLinkType.BVARLINK_Output
+        )
     ],
 )
 
@@ -43,9 +42,7 @@ Behavior_SimpleMath_4 = Behavior(
         VariableLinkData([VAR_CURRENT_SHIELD_ATTR], "A", EBehaviorVariableLinkType.BVARLINK_Input),
         VariableLinkData([VAR_AMP_DRAIN_ATTR], "B", EBehaviorVariableLinkType.BVARLINK_Input),
         VariableLinkData(
-            [VAR_CURRENT_SHIELD_ATTR],
-            "Result",
-            EBehaviorVariableLinkType.BVARLINK_Output,
+            [VAR_CURRENT_SHIELD_ATTR], "Result", EBehaviorVariableLinkType.BVARLINK_Output
         ),
     ],
 )

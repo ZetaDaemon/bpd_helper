@@ -33,7 +33,7 @@ Context: VariableLinkTemplate = partial(
     property_name="Context",
     link_type=EBehaviorVariableLinkType.BVARLINK_Context,
 )
-InputVariableLink: Callable[[list[int], str], VariableLinkData] = partial(
+InputVariableLink: Callable[[list[int], str], VariableLinkData] = partial(  # pyright: ignore[reportAssignmentType]
     VariableLinkData,
     link_type=EBehaviorVariableLinkType.BVARLINK_Input,
 )
@@ -101,7 +101,7 @@ class Behavior_IntMath(Behavior_Math): ...
 
 
 class Behavior_VectorMath(Behavior_Math):
-    class Output:
+    class Output:  # pyright: ignore[reportIncompatibleVariableOverride]
         Length: VariableLinkTemplate = partial(
             VariableLinkData,
             property_name="Length",

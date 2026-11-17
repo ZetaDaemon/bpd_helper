@@ -7,4 +7,5 @@ variable_link_templates.py
 bpd_helper.egg-info/PKG-INFO
 bpd_helper.egg-info/SOURCES.txt
 bpd_helper.egg-info/dependency_links.txt
+bpd_helper.egg-info/requires.txt
 bpd_helper.egg-info/top_level.txt

@@ -2,11 +2,12 @@ line-length = 100
 
 [lint]
 select = ["ALL"]
-ignore = ["FA102", "EXE002", "ANN401", "FBT001", "FBT002", "S311"]
+ignore = ["G004", "FBT001", "FBT002", "COM812"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []
+
 
 [format]
 # Like Black, use double quotes for strings.
@@ -16,7 +17,7 @@ quote-style = "double"
 indent-style = "space"
 
 # Like Black, respect magic trailing commas.
-skip-magic-trailing-comma = false
+skip-magic-trailing-comma = true
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"

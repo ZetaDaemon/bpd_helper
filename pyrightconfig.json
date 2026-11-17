@@ -1,0 +1,11 @@
+{
+    "reportAny": "none",
+    "reportExplicitAny": "none",
+    "reportUnusedCallResult": "none",
+    "reportImplicitStringConcatenation": "none",
+    "reportUnknownVariableType": "none",
+    "reportMissingModuleSource": "none",
+    "reportUnnecessaryComparison": "none",
+    "reportDeprecated": "error",
+    "reportPrivateLocalImportUsage": "error",
+}
