@@ -20,7 +20,7 @@ def generate_bpd_yaml(bpd_name: str, sequences: list[BehaviorSequence]) -> None:
     """Write a standalone BPD object to the given YAML file."""
     caller_dir = Path(inspect.stack()[1].filename).parent
 
-    outfile_path = caller_dir / f"{bpd_name.replace(':', '.')}.txt"
+    outfile_path = caller_dir / f"{bpd_name.replace(':', '.')}.yaml"
 
     document = {
         "Class": "GearboxFramework.BehaviorProviderDefinition",
