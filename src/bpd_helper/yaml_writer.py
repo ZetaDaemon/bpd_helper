@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,14 +16,18 @@ if TYPE_CHECKING:
 __all__ = ["generate_bpd_yaml"]
 
 
-def generate_bpd_yaml(output_path: str | Path, sequences: list[BehaviorSequence]) -> None:
+def generate_bpd_yaml(bpd_name: str, sequences: list[BehaviorSequence]) -> None:
     """Write a standalone BPD object to the given YAML file."""
+    caller_dir = Path(inspect.stack()[1].filename).parent
+
+    outfile_path = caller_dir / f"{bpd_name.replace(':', '.')}.txt"
+
     document = {
         "Class": "GearboxFramework.BehaviorProviderDefinition",
         "BehaviorSequences": [_sequence_yaml(sequence) for sequence in sequences],
     }
     contents = yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
-    Path(output_path).write_text(contents, encoding="utf-8")
+    Path(outfile_path).write_text(contents, encoding="utf-8")
 
 
 def _sequence_yaml(sequence: BehaviorSequence) -> dict[str, Any]:
