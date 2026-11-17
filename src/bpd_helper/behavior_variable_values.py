@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from enum import IntEnum
 from typing import override
 
-import bpd_helper
+from . import core
 
 type ObjectName = str
 """The name of an Object."""
@@ -151,9 +153,7 @@ class EDirectionRelativeToParent(IntEnum):
 
 @dataclass
 class VariableValue(ABC):
-    def resolve(
-        self, sequence: bpd_helper.BehaviorSequence, /
-    ) -> Mapping[str, int | float | bool | str]:
+    def resolve(self, sequence: core.BehaviorSequence, /) -> Mapping[str, int | float | bool | str]:
         result = {}
         for f in fields(self):
             if (fval := getattr(self, f.name)) == f.default:
@@ -181,10 +181,10 @@ class VariableValue(ABC):
 class SubarrayData(VariableValue):
     """Wrapped GearboxFramework.BehaviorProviderDefinition:SubarrayData."""
 
-    variables: list[int | bpd_helper.BpdVariable] = field(default_factory=list)
+    variables: list[int | core.BpdVariable] = field(default_factory=list)
 
     @override
-    def resolve(self, sequence: bpd_helper.BehaviorSequence, /) -> Mapping[str, int]:
+    def resolve(self, sequence: core.BehaviorSequence, /) -> Mapping[str, int]:
         cache = sequence.resolved_subarrays
         key = id(self)
         if key not in cache:
@@ -193,7 +193,7 @@ class SubarrayData(VariableValue):
 
     def copy(self):
         return SubarrayData(
-            [x.copy() if isinstance(x, bpd_helper.BpdVariable) else x for x in self.variables]
+            [x.copy() if isinstance(x, core.BpdVariable) else x for x in self.variables]
         )
 
 

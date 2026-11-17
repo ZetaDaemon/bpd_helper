@@ -17,25 +17,16 @@ this just makes writing the logic here cleaner and has no impact on usage.
 from collections.abc import Callable
 from functools import partial
 
-from bpd_helper import (
-    BehaviorLink,
-    BpdVariable,
-    EBehaviorVariableLinkType,
-    EventData,
-    VariableLinkData,
-)
+from .core import BehaviorLink, BpdVariable, EBehaviorVariableLinkType, EventData, VariableLinkData
 
 type VariableLinkTemplate = Callable[[list[int | BpdVariable]], VariableLinkData]
 
 
 Context: VariableLinkTemplate = partial(
-    VariableLinkData,
-    property_name="Context",
-    link_type=EBehaviorVariableLinkType.BVARLINK_Context,
+    VariableLinkData, property_name="Context", link_type=EBehaviorVariableLinkType.BVARLINK_Context
 )
 InputVariableLink: Callable[[list[int], str], VariableLinkData] = partial(  # pyright: ignore[reportAssignmentType]
-    VariableLinkData,
-    link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+    VariableLinkData, link_type=EBehaviorVariableLinkType.BVARLINK_Input
 )
 
 
@@ -73,14 +64,10 @@ class BPD_Event:
 class Behavior_Math:
     class Input:
         A: VariableLinkTemplate = partial(
-            VariableLinkData,
-            property_name="A",
-            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+            VariableLinkData, property_name="A", link_type=EBehaviorVariableLinkType.BVARLINK_Input
         )
         B: VariableLinkTemplate = partial(
-            VariableLinkData,
-            property_name="B",
-            link_type=EBehaviorVariableLinkType.BVARLINK_Input,
+            VariableLinkData, property_name="B", link_type=EBehaviorVariableLinkType.BVARLINK_Input
         )
 
     class Output:

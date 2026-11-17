@@ -1,5 +1,3 @@
-# ruff: noqa: SLF001
-# Private members are accessed intentionally.
 """Helper library for generating bl2/tps BehaviorProvideDefinition Commands.
 
 Intended to be used by standalone scripts, one per BPD command.
@@ -19,17 +17,14 @@ everything is setup.
 
 from __future__ import annotations
 
-import inspect
-import json
 import struct
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import MISSING, dataclass, field, fields
 from enum import Enum
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Self, overload, override
 
-import behavior_variable_values
+from . import behavior_variable_values
 
 if TYPE_CHECKING:
     from collections.abc import Generator

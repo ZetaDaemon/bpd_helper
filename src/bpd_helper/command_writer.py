@@ -5,10 +5,10 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bpd_helper import EBehaviorVariableType, compile_sequence
+from .core import EBehaviorVariableType, compile_sequence
 
 if TYPE_CHECKING:
-    from bpd_helper import BehaviorSequence
+    from .core import BehaviorSequence
 
 __all__ = ["generate_bpd", "generate_bpd_sequence"]
 

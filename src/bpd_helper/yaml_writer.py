@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from behavior_variable_values import EDirectionRelativeToParent
-from bpd_helper import EBehaviorVariableType, compile_sequence
+from .behavior_variable_values import EDirectionRelativeToParent
+from .core import EBehaviorVariableType, compile_sequence
 
 if TYPE_CHECKING:
-    from bpd_helper import BehaviorSequence, BpdVariable
+    from .core import BehaviorSequence, BpdVariable
 
 __all__ = ["generate_bpd_yaml"]
 

@@ -10,11 +10,5 @@ dependencies = ["PyYAML>=6.0.3"]
 
 
 [tool.setuptools]
-py-modules = [
-    "bpd_helper",
-    "behavior_variable_values",
-    "output_links",
-    "variable_link_templates",
-    "command_writer",
-    "yaml_writer",
-]
+package-dir = { "" = "src" }
+packages = ["bpd_helper"]

@@ -4,26 +4,28 @@
 variable_link_templates is intentionally not used here to keep it clear about the base usage.
 """
 
-from bpd_helper import *  # noqa: F403
-from command_writer import generate_bpd
-from output_links import Behavior_CompareFloat
+from bpd_helper import generate_bpd
+from bpd_helper.core import *  # noqa: F403
+from bpd_helper.output_links import Behavior_CompareFloat
 
-generate_variables(4)
+sequence = BehaviorSequence()
 
-VAR_INSTIGATOR = 0
-VAR_CURRENT_SHIELD_ATTR = 1
-VAR_AMP_DRAIN_ATTR = 2
-# I'm not sure what this one is.
-VAR_UNKNOWN_ATTR = 3
+with sequence.define_for_sequence():
+    generate_variables(4)
+    VAR_INSTIGATOR = 0
+    VAR_CURRENT_SHIELD_ATTR = 1
+    VAR_AMP_DRAIN_ATTR = 2
+    # I'm not sure what this one is.
+    VAR_UNKNOWN_ATTR = 3
 
-OnWeaponFired = EventData(
-    "OnWeaponFired",
-    output_variables=[
-        VariableLinkData(
-            [VAR_INSTIGATOR], "SkillInstigator", EBehaviorVariableLinkType.BVARLINK_Output
-        )
-    ],
-)
+    OnWeaponFired = EventData(
+        "OnWeaponFired",
+        output_variables=[
+            VariableLinkData(
+                [VAR_INSTIGATOR], "SkillInstigator", EBehaviorVariableLinkType.BVARLINK_Output
+            )
+        ],
+    )
 
 Behavior_SetShieldTriggeredState_35 = Behavior(
     "GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0.Behavior_SetShieldTriggeredState_35",
@@ -56,4 +58,4 @@ Behavior_SetShieldTriggeredState_35 += BehaviorLink(Behavior_CompareFloat_4, -1)
 Behavior_CompareFloat_4 += BehaviorLink(Behavior_SimpleMath_4, Behavior_CompareFloat.Equal)
 Behavior_SetShieldTriggeredState_35 += BehaviorLink(Behavior_PostAkEvent_57, -1)
 
-generate_bpd("GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0")
+generate_bpd("GD_Shields.Skills.Impact_Shield_Skill:BehaviorProviderDefinition_0", [sequence])
